@@ -1,4 +1,3 @@
-from enum import IntEnum
 from funcoesTermosol import *
 import numpy as np
 
@@ -19,19 +18,24 @@ def main():
     # Definir a matriz de conectividade
     matrizConectividade = np.zeros((nm, nn))
 
-    for col in range(len(Inc[:,0])):
-        matrizConectividade[int(Inc[:,0][col] -1), col] = -1
-        matrizConectividade[int(Inc[:,1][col] -1), col] = 1
-        
-    #print(f"Matriz de conectividade: \n{matrizConectividade}")
+    nos_1 = Inc[:,0]
+    nos_2 = Inc[:,1]
 
+    for i in range(len(nos_1)):
+        no_1 = int(nos_1[i]) - 1
+        no_2 = int(nos_2[i]) - 1
+        matrizConectividade[i][no_1] = -1
+        matrizConectividade[i][no_2] = 1
+    
+    #print(f"Matriz de conectividade: \n{matrizConectividade}")
+    
     # Calcular a matriz de rigidez de cada elemento
     # Montar a matriz de rigidez global [Kg] da trelica
-    matrizMembros = N @ matrizConectividade # multiplicacao matricial `@`
+    N = np.transpose(N)
+    matrizMembros = matrizConectividade @ N # multiplicacao matricial `@`
     comprimento = np.zeros((np.shape(matrizMembros)[1], 1))
     numeroElementos = np.shape(matrizMembros)[1]
-
-    #print(matrizConectividade)
+    
 
     for col in range(numeroElementos):
         comprimento[col] = np.linalg.norm(matrizMembros[:,col])
