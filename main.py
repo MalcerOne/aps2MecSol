@@ -31,32 +31,44 @@ def main():
     
     # Calcular a matriz de rigidez de cada elemento
     # Montar a matriz de rigidez global [Kg] da trelica
-    N = np.transpose(N)
-    matrizMembros = matrizConectividade @ N # multiplicacao matricial `@`
+    N_transpose = np.transpose(N)
+    matrizMembros = np.matmul(matrizConectividade, N_transpose)
     comprimento = np.zeros((np.shape(matrizMembros)[1], 1))
     numeroElementos = np.shape(matrizMembros)[1]
+    matrizConectividadeT = np.transpose(matrizConectividade)
     
+    linhasMembros = len(matrizMembros)
+    linhasConectividade = len(matrizConectividadeT)
+    matrizRigidezGlobal = np.zeros((nn*2, nn*2))
+    
+    for item in range(0, nm):
+        nos1 = Inc[item,0]
+        nos2 = Inc[item,1]
+        ra = int(Inc[:,0][item])
+        x1 = N[0][ra -1]
+        x2 = N[0][ra -1]
+        y1 = N[1][ra -1]
+        y2 = N[1][ra -1]    
+        L = ((x1-x2)**2+(y1-y2)**2) ** 1/2
+        
+        k = E*A/L
+        
+        membros = matrizMembros[:,item]
+        membros.shape = [linhasMembros, 1]
+        membros_transpose = np.transpose(membros)
+
+        S = (k * np.matmul(membros, membros_transpose)) / (np.linalg.norm(matrizMembros[:,item])**2)
+
+        conectividade = np.transpose(matrizConectividade)[:,item]
+        conectividade.shape = [linhasConectividade, 1]
+        conectividade_transpose = np.transpose(conectividade)
+        conectividadeT = np.matmul(conectividade, conectividade_transpose)
+
+        Ke = np.kron(conectividadeT, S)
+        matrizRigidezGlobal = np.r_[matrizRigidezGlobal, [Ke]]
 
     for col in range(numeroElementos):
         comprimento[col] = np.linalg.norm(matrizMembros[:,col])
-    
-    colunas_membros = np.shape(matrizMembros)[1]
-    linhas_membros  = np.shape(matrizMembros)[0]
-    matrizRigidez = []
-    matrizRigidezGlobal = np.zeros((nn*2, nn*2))
-    S = np.zeros((2, 2))
-
-    for col in range(colunas_membros):
-        m = (matrizMembros[:, col]).reshape(linhas_membros, 1)
-        m_transpose = np.transpose(m)
-
-        S = ((E * A) / comprimento[col]) * ((m @ m_transpose) / (np.linalg.norm(m)) ** 2)
-        conectividade = (matrizConectividade[:, col]).reshape(np.shape(matrizConectividade)[0],1)
-        conectividade_transpose = np.transpose(conectividade)
-
-        rigidez = np.kron((conectividade @ conectividade_transpose), S)
-        matrizRigidez.append(rigidez)
-        matrizRigidezGlobal += rigidez
 
     # Aplicar condicoes de contorno
     mRigidezGlobalCC = condicoesContorno(matrizRigidezGlobal, R)
@@ -108,13 +120,13 @@ def main():
     deformacoes = np.zeros((len(comprimento), 1))
 
     for item in range(len(comprimento)):
-        deformacoes.append((1/comprimento[item]) * (matrizTrigo[item] @ matrizDeslocamentos[item]))
+        deformacoes.append((1/comprimento[item]) * (np.matmul(matrizTrigo[item], matrizDeslocamentos[item])))
 
     # Determinar a tensao em cada elemento
     tensao = E * deformacoes
 
     # Determinar as reacoes de apoio
-    reacoesDeApoio = (matrizRigidezGlobal @ matrizDeslocamentos)[cond]
+    reacoesDeApoio = np.matmul(matrizRigidezGlobal, matrizDeslocamentos)[cond]
 
     # Determinar as forcas internas
     forcasInternas = A * tensao
