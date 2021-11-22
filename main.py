@@ -1,138 +1,125 @@
-from typing import overload
-from funcoesTermosol import *
 import numpy as np
-
-def condicoesContorno(matrizGlobal, condicoes):
-    if np.shape(matrizGlobal)[1] != 1:
-        return np.delete(np.delete(matrizGlobal, list(condicoes[:,0].astype(int)),axis=0), list(condicoes[:,0].astype(int)),axis=1)
-    else:
-        return np.delete(matrizGlobal, list(condicoes[:,0].astype(int)), axis = 0)
+from funcoesTermosol import *
 
 def main():
-    nn, N, nm, Inc, nc, F, nr, R = importa('entrada-grupo1.xlsx')
-    
-    E = Inc[0,2]
-    A = Inc[0,3]
+    [nn, N, nm, Inc, nc, F, nr, R] = importa('entrada-grupo1.xlsx')
 
     plota(N, Inc)
+    
+    C = []
+    
+    for i in range(nm):
+        C_i = nn*[0]
 
-    # Definir a matriz de conectividade
-    matrizConectividade = np.zeros((nm, nn))
+        no_1 = int(Inc[i, 0])
+        no_2 = int(Inc[i, 1])
 
-    nos_1 = Inc[:,0]
-    nos_2 = Inc[:,1]
-
-    for i in range(len(nos_1)):
-        no_1 = int(nos_1[i]) - 1
-        no_2 = int(nos_2[i]) - 1
-        matrizConectividade[i][no_1] = -1
-        matrizConectividade[i][no_2] = 1
-    
-    #print(f"Matriz de conectividade: \n{matrizConectividade}")
-    
-    # Calcular a matriz de rigidez de cada elemento
-    # Montar a matriz de rigidez global [Kg] da trelica
-    N_transpose = np.transpose(N)
-    matrizMembros = np.matmul(matrizConectividade, N_transpose)
-    comprimento = np.zeros((np.shape(matrizMembros)[1], 1))
-    numeroElementos = np.shape(matrizMembros)[1]
-    matrizConectividadeT = np.transpose(matrizConectividade)
-    
-    linhasMembros = len(matrizMembros)
-    linhasConectividade = len(matrizConectividadeT)
-    matrizRigidezGlobal = np.zeros((nn*2, nn*2))
-    
-    for item in range(0, nm):
-        nos1 = Inc[item,0]
-        nos2 = Inc[item,1]
-        ra = int(Inc[:,0][item])
-        x1 = N[0][ra -1]
-        x2 = N[0][ra -1]
-        y1 = N[1][ra -1]
-        y2 = N[1][ra -1]    
-        L = ((x1-x2)**2+(y1-y2)**2) ** 1/2
+        C_i[no_1 - 1] = -1
+        C_i[no_2 - 1] = 1
         
-        membros = matrizMembros[:,item]
-        membros.shape = [linhasMembros, 1]
-        membros_transpose = np.transpose(membros)
+        C.append(C_i) 
 
-        k = E*A/L
-        S = (k * np.matmul(membros, membros_transpose)) / (np.linalg.norm(matrizMembros[:,item])**2)
-
-        conectividade = np.transpose(matrizConectividade)[:,item]
-        conectividade.shape = [linhasConectividade, 1]
-        conectividade_transpose = np.transpose(conectividade)
-        conectividadeT = np.matmul(conectividade, conectividade_transpose)
-
-        Ke = np.kron(conectividadeT, S)
-        matrizRigidezGlobal += Ke
-    print(matrizRigidezGlobal)
-    for col in range(numeroElementos):
-        comprimento[col] = np.linalg.norm(matrizMembros[:,col])
-
-    # Aplicar condicoes de contorno
-    mRigidezGlobalCC = condicoesContorno(matrizRigidezGlobal, R)
-    vetorGlobalForcasCC = condicoesContorno(F, R)
-
-    # Aplicar um metodo numerico para resolver o sistema de equacoes e obter os deslocamentos nodais
-    colunas_rigidez = np.shape(mRigidezGlobalCC)[1]
-    linhas_rigidez = np.shape(mRigidezGlobalCC)[0]
+    C_t = np.transpose(np.array(C))
+    M = np.matmul(N, C_t)
+    E = Inc[0, 2]
+    A = Inc[0, 3]
+    lenM = len(M)
+    lenC = len(C_t)
+    Kg = np.zeros((2*nn, 2*nn))
     
-    x = np.zeros((linhas_rigidez,1)) # chute inicial
-    xnew = np.zeros((linhas_rigidez, 1)) 
-    tolerancia = 1e-10
-    p = 100 # maximo de iteracoes
+    for i in range(0, nm):
+        x1 = N[0][int(Inc[:,0][i])-1]
+        y1 = N[1][int(Inc[:,0][i])-1]
+        x2 = N[0][int(Inc[:,1][i])-1]
+        y2 = N[1][int(Inc[:,1][i])-1]    
+        
+        L = (((x1-x2)**2+(y1-y2)**2))**0.5
+        
+        k = (E*A)/L
+        
+        M_h = M[:,i]
+        M_h.shape = [lenM, 1]
+        M_ht = np.transpose(M_h)
+        Se = (k * np.matmul(M_h, M_ht)) / (np.linalg.norm(M[:,i])**2)
+
+        C_h = C_t[:,i]
+        C_h.shape = [lenC, 1]
+        C_ht = np.transpose(C_h)
+        
+        m_cxh = np.matmul(C_h, C_ht)
+        Ke = np.kron(m_cxh, Se)
+        Kg += Ke
+        
+    F_c = np.delete(F, R.astype(int))
+    Kg_c = np.delete(Kg, R.astype(int),0)
+    Kg_c = np.delete(Kg_c, R.astype(int), 1)
     
-    for i in range(p):
-        # Método de Jacobi
-        for l in linhas_rigidez:
-            xnew[l] = (vetorGlobalForcasCC[l] - xnew[l]) / mRigidezGlobalCC[l][l]
-        
-        # Erro
-        erro = max(abs((xnew-x)/xnew))
-        
-        # Atualizar
-        x = np.copy(xnew)
-        
-        if erro <= tolerancia:
+    U_ar = np.linalg.solve(Kg_c, F_c)
+
+    x = np.zeros(Kg_c.shape[0])
+                    
+    m_d = np.diag(Kg_c)
+    k_d = Kg_c - np.diagflat(m_d)
+    
+    for i in range(100):
+        x2 = (F_c - np.matmul(k_d,x)) / m_d
+        error =  max(abs((x2 - x)/x2) )
+        if error < 1e-10:
+            u_j = x2
             break
-
-    # Determinar a deformacao em cada elemento
-    # Criar matriz de angulos
-    matrizTrigo = np.zeros((numeroElementos, 4))
-
-    for elemento in range(numeroElementos):
-        matrizTrigo[elemento, 0] = -matrizConectividade[elemento, 2] # cos
-        matrizTrigo[elemento, 1] = -matrizConectividade[elemento, 3] #sen
-        matrizTrigo[elemento, 2] = (matrizMembros[0, elemento])/comprimento[elemento] # cos
-        matrizTrigo[elemento, 3] = (matrizMembros[1, elemento])/comprimento[elemento] # sen
-
-    # Criar matriz de deslocamentos
-    matrizDeslocamentos = np.zeros((len(R) + len(x), 1))
-    cond = list(R[:,0].astype(int))
-    contador = 0
-
-    for deslocamento in range(len(matrizDeslocamentos)):
-        if deslocamento not in cond:
-            matrizDeslocamentos[deslocamento] = x[contador]
-            contador = contador + 1
+        
+        u_j = x2
+        
+    u_j_a = np.zeros((nn*2,1))
+    i = 0
     
-    deformacoes = np.zeros((len(comprimento), 1))
+    for c in range(len(u_j_a)):
+        if c not in R:
+            u_j_a[c] += u_j[i]
+            i += 1
+            
+    u = np.zeros((nn*2,1))
+    i = 0
+    
+    for c in range(len(u)):
+        if c not in R:
+            u[c] += U_ar[i]
+            i += 1
+            
+    P = np.matmul(Kg,u)
+    P_r = np.zeros((nr,1))
+    
+    for i in range(nr):  
+        index = int(R[i])
+        P_r[i] = P[index]
+        
+    arr_d, arr_t, arr_f = ([] for i in range(3))
+    
+    for i in range (nm):    
+        m_a = [u[(int(Inc[i, 0])-1)*2], u[(int(Inc[i, 0])-1)*2 +1], u[(int(Inc[i, 1])-1)*2], u[int(Inc[i, 1]-1)*2 +1]]
+        
+        x1 = N[0][int(Inc[:,0][i])-1]
+        y1 = N[1][int(Inc[:,0][i])-1]
+        x2 = N[0][int(Inc[:,1][i])-1]
+        y2 = N[1][int(Inc[:,1][i])-1]    
+        
+        L = (((x1-x2)**2 + (y1-y2)**2))**0.5
+        E =  Inc[i, 2]
+        A = Inc[i,3]
+        k = E*A/L
+        s = (y2-y1)/L
+        c = (x2-x1)/L
+        C = [-c, -s, c, s]
 
-    for item in range(len(comprimento)):
-        deformacoes.append((1/comprimento[item]) * (np.matmul(matrizTrigo[item], matrizDeslocamentos[item])))
-
-    # Determinar a tensao em cada elemento
-    tensao = E * deformacoes
-
-    # Determinar as reacoes de apoio
-    reacoesDeApoio = np.matmul(matrizRigidezGlobal, matrizDeslocamentos)[cond]
-
-    # Determinar as forcas internas
-    forcasInternas = A * tensao
-
-    # Gera um arquivo de output com as reacoes de apoio, matriz de deslocamentos, deformacoes, forcas internas e tensao
-    geraSaida("output", reacoesDeApoio, matrizDeslocamentos, deformacoes, forcasInternas, tensao)
-
+        dfm = (1/L) * np.matmul(C, m_a)
+        st = dfm*E
+        frc = st*A
+        
+        arr_d.append(dfm)
+        arr_t.append(st)
+        arr_f.append(frc)
+        
+    geraSaida('saida', P_r, u_j_a, arr_d, arr_f, arr_t)
+            
 if __name__ == '__main__':
     main()
