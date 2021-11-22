@@ -5,7 +5,11 @@ def main():
     [nn, N, nm, Inc, nc, F, nr, R] = importa('entrada-grupo1.xlsx')
 
     plota(N, Inc)
+
+    E = Inc[0, 2]
+    A = Inc[0, 3]
     
+    # Definir a matriz de conectividade
     C = []
     
     for i in range(nm):
@@ -20,9 +24,12 @@ def main():
         C.append(C_i) 
 
     C_t = np.transpose(np.array(C))
+
+    # Definir a matriz de membros
     M = np.matmul(N, C_t)
-    E = Inc[0, 2]
-    A = Inc[0, 3]
+
+    # Calcular a matriz de rigidez de cada elemento (Ke)
+    # Montar a matriz de rigidez global (Kg)
     lenM = len(M)
     lenC = len(C_t)
     Kg = np.zeros((2*nn, 2*nn))
@@ -49,13 +56,16 @@ def main():
         m_cXh = np.matmul(m2_h, m2_h_t)
         Ke = np.kron(m_cXh, Se)
         Kg += Ke
-    
+
+    # Montar o vetor global de forcas
+    # Aplicar condicoes de contorno
+    F_c = np.delete(F, R.astype(int))
     Kg_c = np.delete(Kg, R.astype(int),0)
     Kg_c = np.delete(Kg_c, R.astype(int), 1)
     x = np.zeros(Kg_c.shape[0])
-    F_c = np.delete(F, R.astype(int))
-    U_ar = np.linalg.solve(Kg_c, F_c)
 
+    # Aplicar um metodo numerico para resolver o sistema de equacoes e obter os deslocamentos nodais
+    U_ar = np.linalg.solve(Kg_c, F_c)
     m_d = np.diag(Kg_c)
     k_d = Kg_c - np.diagflat(m_d)
     
@@ -83,14 +93,10 @@ def main():
         if c not in R:
             u[c] += U_ar[i]
             i += 1
-            
-    P = np.matmul(Kg, u)
-    P_r = np.zeros((nr, 1))
-    
-    for i in range(nr):  
-        index = int(R[i])
-        P_r[i] = P[index]
-        
+
+    # Determinar a deformacao em cada elemento
+    # Determinar a tensao em cada elemento
+    # Determinar forcas internas em cada elemento
     arr_t, arr_f, arr_d = ([] for i in range(3))
     
     for i in range (nm):    
@@ -116,8 +122,16 @@ def main():
         arr_t.append(st)
         arr_f.append(frc)
         arr_d.append(dfm)
-        
-        
+    
+    # Determinar as reacoes de apoio
+    P = np.matmul(Kg, u)
+    P_r = np.zeros((nr, 1))
+    
+    for i in range(nr):  
+        index = int(R[i])
+        P_r[i] = P[index]
+
+    # Imprimir os resultados em um arquivo texto     
     geraSaida('output-grupo1', P_r, u_j_a, arr_d, arr_f, arr_t)
             
 if __name__ == '__main__':
