@@ -1,3 +1,4 @@
+from typing import overload
 from funcoesTermosol import *
 import numpy as np
 
@@ -51,12 +52,11 @@ def main():
         y2 = N[1][ra -1]    
         L = ((x1-x2)**2+(y1-y2)**2) ** 1/2
         
-        k = E*A/L
-        
         membros = matrizMembros[:,item]
         membros.shape = [linhasMembros, 1]
         membros_transpose = np.transpose(membros)
 
+        k = E*A/L
         S = (k * np.matmul(membros, membros_transpose)) / (np.linalg.norm(matrizMembros[:,item])**2)
 
         conectividade = np.transpose(matrizConectividade)[:,item]
@@ -65,8 +65,8 @@ def main():
         conectividadeT = np.matmul(conectividade, conectividade_transpose)
 
         Ke = np.kron(conectividadeT, S)
-        matrizRigidezGlobal = np.r_[matrizRigidezGlobal, [Ke]]
-
+        matrizRigidezGlobal += Ke
+    print(matrizRigidezGlobal)
     for col in range(numeroElementos):
         comprimento[col] = np.linalg.norm(matrizMembros[:,col])
 
