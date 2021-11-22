@@ -29,6 +29,8 @@ geraSaida(nome,Ft,Ut,Epsi,Fi,Ti)
 -------------------------------------------------------------------------------
 
 """
+from openpyxl import load_workbook
+
 def plota(N,Inc):
     # Numero de membros
     nm = len(Inc[:,0])
@@ -60,6 +62,7 @@ def importa(entradaNome):
     import xlrd
     
     arquivo = xlrd.open_workbook(entradaNome)
+    #arquivo = load_workbook(entradaNome)
     
     ################################################## Ler os nos
     nos = arquivo.sheet_by_name('Nos')
