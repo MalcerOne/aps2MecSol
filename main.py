@@ -27,7 +27,7 @@ def main():
     lenC = len(C_t)
     Kg = np.zeros((2*nn, 2*nn))
     
-    for i in range(0, nm):
+    for i in range(nm):
         x1 = N[0][int(Inc[:,0][i])-1]
         y1 = N[1][int(Inc[:,0][i])-1]
         x2 = N[0][int(Inc[:,1][i])-1]
@@ -37,40 +37,38 @@ def main():
         
         k = (E*A)/L
         
-        M_h = M[:,i]
-        M_h.shape = [lenM, 1]
-        M_ht = np.transpose(M_h)
-        Se = (k * np.matmul(M_h, M_ht)) / (np.linalg.norm(M[:,i])**2)
+        m_h = M[:,i]
+        m_h.shape = [lenM, 1]
+        m_h_t = np.transpose(m_h)
+        Se = (k * np.matmul(m_h, m_h_t)) / (np.linalg.norm(M[:,i])**2)
 
-        C_h = C_t[:,i]
-        C_h.shape = [lenC, 1]
-        C_ht = np.transpose(C_h)
+        m2_h = C_t[:,i]
+        m2_h.shape = [lenC, 1]
+        m2_h_t = np.transpose(m2_h)
         
-        m_cxh = np.matmul(C_h, C_ht)
-        Ke = np.kron(m_cxh, Se)
+        m_cXh = np.matmul(m2_h, m2_h_t)
+        Ke = np.kron(m_cXh, Se)
         Kg += Ke
-        
-    F_c = np.delete(F, R.astype(int))
+    
     Kg_c = np.delete(Kg, R.astype(int),0)
     Kg_c = np.delete(Kg_c, R.astype(int), 1)
-    
+    x = np.zeros(Kg_c.shape[0])
+    F_c = np.delete(F, R.astype(int))
     U_ar = np.linalg.solve(Kg_c, F_c)
 
-    x = np.zeros(Kg_c.shape[0])
-                    
     m_d = np.diag(Kg_c)
     k_d = Kg_c - np.diagflat(m_d)
     
     for i in range(100):
         x2 = (F_c - np.matmul(k_d,x)) / m_d
-        error =  max(abs((x2 - x)/x2) )
-        if error < 1e-10:
+        error =  max(abs((x2 - x) / x2) )
+        if error < (1e-10):
             u_j = x2
             break
         
         u_j = x2
         
-    u_j_a = np.zeros((nn*2,1))
+    u_j_a = np.zeros((2 * nn, 1))
     i = 0
     
     for c in range(len(u_j_a)):
@@ -78,7 +76,7 @@ def main():
             u_j_a[c] += u_j[i]
             i += 1
             
-    u = np.zeros((nn*2,1))
+    u = np.zeros((2 * nn,1))
     i = 0
     
     for c in range(len(u)):
@@ -86,17 +84,17 @@ def main():
             u[c] += U_ar[i]
             i += 1
             
-    P = np.matmul(Kg,u)
-    P_r = np.zeros((nr,1))
+    P = np.matmul(Kg, u)
+    P_r = np.zeros((nr, 1))
     
     for i in range(nr):  
         index = int(R[i])
         P_r[i] = P[index]
         
-    arr_d, arr_t, arr_f = ([] for i in range(3))
+    arr_t, arr_f, arr_d = ([] for i in range(3))
     
     for i in range (nm):    
-        m_a = [u[(int(Inc[i, 0])-1)*2], u[(int(Inc[i, 0])-1)*2 +1], u[(int(Inc[i, 1])-1)*2], u[int(Inc[i, 1]-1)*2 +1]]
+        m_a = [u[(int(Inc[i, 0]) - 1 ) * 2], u[(int(Inc[i, 0]) - 1 ) * 2 + 1], u[(int(Inc[i, 1]) - 1) * 2], u[int(Inc[i, 1] - 1 ) * 2 + 1]]
         
         x1 = N[0][int(Inc[:,0][i])-1]
         y1 = N[1][int(Inc[:,0][i])-1]
@@ -104,22 +102,23 @@ def main():
         y2 = N[1][int(Inc[:,1][i])-1]    
         
         L = (((x1-x2)**2 + (y1-y2)**2))**0.5
-        E =  Inc[i, 2]
+        E = Inc[i, 2]
         A = Inc[i,3]
-        k = E*A/L
-        s = (y2-y1)/L
-        c = (x2-x1)/L
+        k = E * A / L
+        s = (y2-y1)/ L
+        c = (x2-x1)/ L
         C = [-c, -s, c, s]
 
         dfm = (1/L) * np.matmul(C, m_a)
-        st = dfm*E
-        frc = st*A
+        st = E * dfm
+        frc = A * st
         
-        arr_d.append(dfm)
         arr_t.append(st)
         arr_f.append(frc)
+        arr_d.append(dfm)
         
-    geraSaida('saida', P_r, u_j_a, arr_d, arr_f, arr_t)
+        
+    geraSaida('output-grupo1', P_r, u_j_a, arr_d, arr_f, arr_t)
             
 if __name__ == '__main__':
     main()
