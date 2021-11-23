@@ -132,7 +132,7 @@ def main():
         P_r[i] = P[index]
 
     # Imprimir os resultados em um arquivo texto     
-    geraSaida('output-grupo1', P_r, u_j_a, arr_d, arr_f, arr_t)
+    geraSaida('output-grupo1', P_r, u, arr_d, arr_f, arr_t)
             
 if __name__ == '__main__':
     main()
